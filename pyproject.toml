@@ -1,0 +1,13 @@
+[project]
+name = "composable-search"
+version = "0.1.0"
+description = "Composable, evidence-gated search agent framework built on LangGraph"
+requires-python = ">=3.12"
+dependencies = ["langgraph>=1.2.0", "pydantic>=2.0", "typing-extensions>=4.0"]
+
+[build-system]
+requires = ["setuptools>=75"]
+build-backend = "setuptools.backends._legacy:_Backend"
+
+[project.scripts]
+composable-search = "main:main"
