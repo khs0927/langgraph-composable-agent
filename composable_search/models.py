@@ -7,8 +7,8 @@ Typed contracts that flow through the LangGraph StateGraph:
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Optional
-from pydantic import BaseModel, Field, HttpUrl
+from typing import ClassVar, Optional
+from pydantic import BaseModel, ConfigDict, Field, HttpUrl
 
 
 class SearchRequest(BaseModel):
@@ -44,8 +44,7 @@ class NormalizedHit(BaseModel):
     content_hash: str = Field(..., description="SHA-256 of title+url for dedup")
     source_domain: str = ""
 
-    class Config:
-        frozen = True  # hashable for set-based dedup
+    model_config = ConfigDict(frozen=True)  # hashable for set-based dedup
 
 
 class Evidence(BaseModel):
@@ -61,12 +60,12 @@ class Evidence(BaseModel):
     passed: bool
 
     # Weights for score calculation
-    W_SOURCE = 0.30
-    W_RECENCY = 0.20
-    W_CITATION = 0.25
-    W_REDUNDANCY = 0.15
-    W_TRIVIAL = 0.10
-    PASS_THRESHOLD = 0.82
+    W_SOURCE: ClassVar[float] = 0.30
+    W_RECENCY: ClassVar[float] = 0.20
+    W_CITATION: ClassVar[float] = 0.25
+    W_REDUNDANCY: ClassVar[float] = 0.15
+    W_TRIVIAL: ClassVar[float] = 0.10
+    PASS_THRESHOLD: ClassVar[float] = 0.82
 
 
 class AgentReport(BaseModel):

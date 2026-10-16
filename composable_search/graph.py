@@ -6,6 +6,7 @@ Fan-out → parallel fetch → fan-in → evidence gate workflow.
 from __future__ import annotations
 
 import operator
+from datetime import datetime, timedelta, timezone
 from typing import Annotated, TypedDict
 from typing_extensions import Required
 
@@ -24,6 +25,29 @@ class AgentState(TypedDict):
     normalized_hits: list[NormalizedHit]
     evidence: Evidence
     report: AgentReport
+
+
+def _recency(hits: list[NormalizedHit], recency_days: int | None) -> tuple[float, bool]:
+    """Score how many hits fall inside the requested recency window.
+
+    With no ``recency_days`` the criterion is not requested, so it is fully
+    satisfied. Otherwise the score is the fraction of hits published within the
+    window; undated hits count as not recent.
+    """
+    if recency_days is None:
+        return 1.0, True
+    if not hits:
+        return 0.0, False
+    now = datetime.now(timezone.utc)
+    cutoff = now - timedelta(days=recency_days)
+    recent = 0
+    for h in hits:
+        if h.published is None:
+            continue
+        pub = h.published if h.published.tzinfo else h.published.replace(tzinfo=timezone.utc)
+        if pub >= cutoff:
+            recent += 1
+    return recent / len(hits), recent > 0
 
 
 def build_graph(registry: ProviderRegistry) -> StateGraph:
@@ -56,8 +80,7 @@ def build_graph(registry: ProviderRegistry) -> StateGraph:
         independent_sources = len(domains)
         source_score = min(independent_sources / max(req.min_sources, 1), 1.0)
 
-        recency_score = 1.0
-        has_recency = True
+        recency_score, has_recency = _recency(hits, req.recency_days)
 
         citation_score = 1.0 if len(hits) > 0 else 0.0
 
@@ -81,7 +104,7 @@ def build_graph(registry: ProviderRegistry) -> StateGraph:
         evidence = Evidence(
             hits=hits,
             independent_sources=independent_sources,
-            has_recency=True,
+            has_recency=has_recency,
             citation_accuracy=citation_score,
             redundancy_removed=redundancy_removed,
             non_trivial=non_trivial,
@@ -133,9 +156,11 @@ def build_graph(registry: ProviderRegistry) -> StateGraph:
     return builder
 
 
-def run_search(registry: ProviderRegistry, topic: str) -> AgentReport:
+def run_search(
+    registry: ProviderRegistry, topic: str, recency_days: int | None = None
+) -> AgentReport:
     """Compile and run the search graph in one call."""
     graph = build_graph(registry).compile()
-    req = SearchRequest(topic=topic)
+    req = SearchRequest(topic=topic, recency_days=recency_days)
     final_state = graph.invoke({"request": req, "raw_hits": []})
     return final_state["report"]
