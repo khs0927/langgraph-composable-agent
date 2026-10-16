@@ -6,7 +6,7 @@ Filters tracking parameters, generates content hashes, and deduplicates.
 from __future__ import annotations
 
 import hashlib
-from urllib.parse import urlparse, urlunparse, parse_qsl
+from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
 
 from .models import Hit, NormalizedHit
 
@@ -26,8 +26,12 @@ def canonical_url(url: str) -> str:
             netloc = netloc[:-3]
         elif scheme == "https" and netloc.endswith(":443"):
             netloc = netloc[:-4]
-        # Remove fragment
-        return urlunparse((scheme, netloc, parsed.path, parsed.params, parsed.query, ""))
+        query = urlencode([
+            (k, v) for k, v in parse_qsl(parsed.query, keep_blank_values=True)
+            if k.lower() not in TRACKING_PARAMS and not k.lower().startswith("utm")
+        ])
+        # Drop tracking params and fragment
+        return urlunparse((scheme, netloc, parsed.path, parsed.params, query, ""))
     except Exception:
         return url
 
@@ -42,7 +46,7 @@ def deduplicate(hits: list[Hit]) -> list[NormalizedHit]:
         if not cleaned:
             continue
 
-        content_bytes = f"{h.url.strip()}|{cleaned}".encode("utf-8")
+        content_bytes = cleaned.encode("utf-8")
         content_hash = hashlib.sha256(content_bytes).hexdigest()
         if content_hash in seen:
             continue
@@ -57,7 +61,7 @@ def deduplicate(hits: list[Hit]) -> list[NormalizedHit]:
 
         normalized.append(NormalizedHit(
             provider=h.provider,
-            url=h.url,
+            url=cleaned,
             content_hash=content_hash,
             source_domain=domain,
             title=h.title,

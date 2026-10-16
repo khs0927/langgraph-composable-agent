@@ -14,7 +14,7 @@ class TestComposableSearch(unittest.TestCase):
         ]))
         self.registry.register(StaticProvider("test_b", [
             {"url": "http://example.com/a1", "title": "Page 1 Dupe", "snippet": "..."},
-            {"url": "http://example.com/b1", "title": "Page 3", "snippet": "..."},
+            {"url": "http://example.org/b1", "title": "Page 3", "snippet": "..."},
         ]))
 
     def test_canonical(self):

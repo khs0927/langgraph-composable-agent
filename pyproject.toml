@@ -7,7 +7,11 @@ dependencies = ["langgraph>=1.2.0", "pydantic>=2.0", "typing-extensions>=4.0"]
 
 [build-system]
 requires = ["setuptools>=75"]
-build-backend = "setuptools.backends._legacy:_Backend"
+build-backend = "setuptools.build_meta"
 
 [project.scripts]
 composable-search = "main:main"
+
+[tool.setuptools]
+packages = ["composable_search"]
+py-modules = ["main"]
